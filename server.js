@@ -17,42 +17,52 @@ app.post("/download", async (req, res) => {
   if (!videoUrl) return res.send("Invalid URL");
 
   try {
-    // STEP 1: Parse API
-    const parseRes = await fetch("https://api.vidssave.com/api/contentsite_api/media/parse", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0"
-      },
-      body: JSON.stringify({
-        url: videoUrl
-      })
-    });
+    // STEP 1: Parse with real headers
+    const parseRes = await fetch(
+      "https://api.vidssave.com/api/contentsite_api/media/parse",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Mozilla/5.0",
+          "Origin": "https://vidssave.com",
+          "Referer": "https://vidssave.com/"
+        },
+        body: JSON.stringify({
+          url: videoUrl
+        })
+      }
+    );
 
     const parseData = await parseRes.json();
 
-    if (!parseData || !parseData.data) {
-      return res.send("❌ Failed to parse video");
+    // DEBUG (important)
+    console.log(parseData);
+
+    if (!parseData || !parseData.data || !parseData.data.request) {
+      return res.send("❌ Failed to parse video (API blocked)");
     }
 
-    // STEP 2: Extract request token
-    const requestToken = parseData.data.request;
+    const token = parseData.data.request;
 
-    const redirectUrl = `https://api.vidssave.com/api/contentsite_api/media/download_redirect?request=${requestToken}`;
+    // STEP 2: Redirect
+    const redirectUrl = `https://api.vidssave.com/api/contentsite_api/media/download_redirect?request=${token}`;
 
-    // STEP 3: Follow redirect
     const finalRes = await fetch(redirectUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://vidssave.com/"
+      },
       redirect: "follow"
     });
 
     const finalVideo = finalRes.url;
 
-    // RESULT
     res.send(`
-      <div style="text-align:center;font-family:sans-serif">
+      <div style="text-align:center">
         <h2>Download Ready 🎬</h2>
         <a href="${finalVideo}" target="_blank">
-          <button style="padding:12px 20px;font-size:16px;background:red;color:white;border:none;border-radius:8px">
+          <button style="padding:12px 20px;background:red;color:white;border:none;border-radius:8px">
             Download Video
           </button>
         </a>
