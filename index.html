@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YT Downloader</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: white;
+}
+
+.container {
+  max-width: 400px;
+  margin: auto;
+  padding: 20px;
+  text-align: center;
+}
+
+h2 {
+  margin-top: 40px;
+}
+
+.card {
+  background: #1e293b;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.4);
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 15px;
+  border-radius: 10px;
+  border: none;
+  background: #ef4444;
+  color: white;
+  font-size: 16px;
+}
+
+button:active {
+  background: #dc2626;
+}
+
+.loader {
+  display: none;
+  margin-top: 15px;
+}
+
+.result {
+  margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>🎬 YouTube Downloader</h2>
+
+  <div class="card">
+    <input id="url" placeholder="Paste YouTube link here">
+    <button onclick="download()">Download</button>
+
+    <div class="loader" id="loader">⏳ Processing...</div>
+
+    <div class="result" id="result"></div>
+  </div>
+</div>
+
+<script>
+async function download() {
+  const url = document.getElementById("url").value;
+  const loader = document.getElementById("loader");
+  const result = document.getElementById("result");
+
+  if (!url) return alert("Enter URL");
+
+  loader.style.display = "block";
+  result.innerHTML = "";
+
+  const res = await fetch("/download", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ url })
+  });
+
+  const data = await res.json();
+
+  loader.style.display = "none";
+
+  if (data.url) {
+    result.innerHTML = `
+      <p>${data.title || ""}</p>
+      <a href="${data.url}" target="_blank">
+        <button>⬇ Download Video</button>
+      </a>
+    `;
+  } else {
+    result.innerHTML = "❌ Error fetching video";
+  }
+}
+</script>
+
+</body>
+</html>
