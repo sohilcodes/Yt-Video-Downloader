@@ -1,5 +1,5 @@
 const express = require("express");
-const fetch = require("node-fetch");
+const { exec } = require("child_process");
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -11,46 +11,34 @@ app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
 
-app.post("/download", async (req, res) => {
+app.post("/download", (req, res) => {
   const url = req.body.url;
 
   if (!url) return res.send("Invalid URL");
 
-  try {
-    // NEW WORKING API
-    const api = `https://api.cobalt.tools/api/json`;
+  const command = `yt-dlp -f best -g ${url}`;
 
-    const response = await fetch(api, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        url: url
-      })
-    });
-
-    const data = await response.json();
-
-    if (!data || !data.url) {
+  exec(command, (err, stdout, stderr) => {
+    if (err) {
+      console.log(err);
       return res.send("❌ Failed to fetch video");
     }
+
+    const videoUrl = stdout.trim();
 
     res.send(`
       <div style="text-align:center">
         <h2>Download Ready 🎬</h2>
-        <a href="${data.url}" target="_blank">
-          <button style="padding:10px 20px;font-size:16px">Download Video</button>
+        <a href="${videoUrl}" target="_blank">
+          <button style="padding:10px 20px;font-size:16px">
+            Download Video
+          </button>
         </a>
         <br><br>
         <a href="/">⬅ Back</a>
       </div>
     `);
-
-  } catch (err) {
-    console.log(err);
-    res.send("❌ Error fetching video");
-  }
+  });
 });
 
 app.listen(PORT, "0.0.0.0", () => {
