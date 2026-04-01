@@ -7,29 +7,49 @@ const PORT = process.env.PORT || 10000;
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/public/index.html");
+});
+
 app.post("/download", async (req, res) => {
   const url = req.body.url;
 
-  if (!url) {
-    return res.send("Invalid URL");
-  }
+  if (!url) return res.send("Invalid URL");
 
   try {
-    const api = `https://api.vevioz.com/api/button/mp4?url=${encodeURIComponent(url)}`;
-    const response = await fetch(api);
-    const html = await response.text();
+    // NEW WORKING API
+    const api = `https://api.cobalt.tools/api/json`;
+
+    const response = await fetch(api, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        url: url
+      })
+    });
+
+    const data = await response.json();
+
+    if (!data || !data.url) {
+      return res.send("❌ Failed to fetch video");
+    }
 
     res.send(`
       <div style="text-align:center">
-        <h2>Download Options</h2>
-        ${html}
+        <h2>Download Ready 🎬</h2>
+        <a href="${data.url}" target="_blank">
+          <button style="padding:10px 20px;font-size:16px">Download Video</button>
+        </a>
         <br><br>
         <a href="/">⬅ Back</a>
       </div>
     `);
 
   } catch (err) {
-    res.send("Error fetching video");
+    console.log(err);
+    res.send("❌ Error fetching video");
   }
 });
 
