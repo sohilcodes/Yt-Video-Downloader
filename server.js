@@ -1,5 +1,5 @@
 const express = require("express");
-const { exec } = require("child_process");
+const fetch = require("node-fetch");
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -11,26 +11,48 @@ app.get("/", (req, res) => {
   res.sendFile(__dirname + "/public/index.html");
 });
 
-app.post("/download", (req, res) => {
-  const url = req.body.url;
+app.post("/download", async (req, res) => {
+  const videoUrl = req.body.url;
 
-  if (!url) return res.send("Invalid URL");
+  if (!videoUrl) return res.send("Invalid URL");
 
-  const command = `yt-dlp -f best -g ${url}`;
+  try {
+    // STEP 1: Parse API
+    const parseRes = await fetch("https://api.vidssave.com/api/contentsite_api/media/parse", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0"
+      },
+      body: JSON.stringify({
+        url: videoUrl
+      })
+    });
 
-  exec(command, (err, stdout, stderr) => {
-    if (err) {
-      console.log(err);
-      return res.send("❌ Failed to fetch video");
+    const parseData = await parseRes.json();
+
+    if (!parseData || !parseData.data) {
+      return res.send("❌ Failed to parse video");
     }
 
-    const videoUrl = stdout.trim();
+    // STEP 2: Extract request token
+    const requestToken = parseData.data.request;
 
+    const redirectUrl = `https://api.vidssave.com/api/contentsite_api/media/download_redirect?request=${requestToken}`;
+
+    // STEP 3: Follow redirect
+    const finalRes = await fetch(redirectUrl, {
+      redirect: "follow"
+    });
+
+    const finalVideo = finalRes.url;
+
+    // RESULT
     res.send(`
-      <div style="text-align:center">
+      <div style="text-align:center;font-family:sans-serif">
         <h2>Download Ready 🎬</h2>
-        <a href="${videoUrl}" target="_blank">
-          <button style="padding:10px 20px;font-size:16px">
+        <a href="${finalVideo}" target="_blank">
+          <button style="padding:12px 20px;font-size:16px;background:red;color:white;border:none;border-radius:8px">
             Download Video
           </button>
         </a>
@@ -38,7 +60,11 @@ app.post("/download", (req, res) => {
         <a href="/">⬅ Back</a>
       </div>
     `);
-  });
+
+  } catch (err) {
+    console.log(err);
+    res.send("❌ Error fetching video");
+  }
 });
 
 app.listen(PORT, "0.0.0.0", () => {
